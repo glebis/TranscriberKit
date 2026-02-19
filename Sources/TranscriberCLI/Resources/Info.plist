@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>com.transcriberkit.cli</string>
+	<key>CFBundleName</key>
+	<string>TranscriberCLI</string>
+	<key>CFBundleVersion</key>
+	<string>0.1.0</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>TranscriberKit needs microphone access for live speech transcription.</string>
+</dict>
+</plist>
