@@ -30,11 +30,26 @@ TranscriberKit/
 - Event observation callback (`onEvent`) for real-time streaming to MCP clients
 - MCP supports progress notifications and resource subscriptions for streaming-capable clients
 
-## Requirements
+## Install
 
-- macOS 15+ (macOS 26+ for Speech framework features)
-- Swift 6.0+
-- Xcode 16+
+### Homebrew
+
+```bash
+brew install glebis/tap/transcriber-kit
+```
+
+After install, codesign for microphone access:
+
+```bash
+codesign --force --sign - --entitlements $(brew --prefix)/share/transcriber-kit/Speech.entitlements $(brew --prefix)/bin/transcriber
+codesign --force --sign - --entitlements $(brew --prefix)/share/transcriber-kit/Speech.entitlements $(brew --prefix)/bin/transcriber-mcp
+```
+
+File-based transcription works without codesigning.
+
+### Build from source
+
+**Requirements:** macOS 15+, Swift 6.0+, Xcode 16+ (macOS 26+ for Speech framework features)
 
 ## Build
 
@@ -126,11 +141,13 @@ Add to your `.mcp.json`:
 {
   "mcpServers": {
     "transcriber": {
-      "command": "/path/to/TranscriberKit/.build/release/transcriber-mcp"
+      "command": "transcriber-mcp"
     }
   }
 }
 ```
+
+If installed from source, use the full path: `.build/release/transcriber-mcp`
 
 ### Example session
 
