@@ -19,7 +19,7 @@ TranscriberKit/
     TranscriberMCP/      # MCP server executable (`transcriber-mcp`)
 
   Tests/
-    TranscriberCoreTests/  # 65 unit tests across 15 suites
+    TranscriberCoreTests/  # 73 unit tests across 16 suites
 ```
 
 **Key design decisions:**
@@ -27,7 +27,8 @@ TranscriberKit/
 - `AsyncStream<TranscriptionEvent>` as the universal interface between engine and consumers
 - Protocol-based audio sources (`AudioCaptureSource`) with `MockAudioSource` for testing
 - Post-hoc diarization (accumulate audio, run FluidAudio once after stop)
-- MCP disables volatile results (request/response model); CLI enables them for real-time feedback
+- Event observation callback (`onEvent`) for real-time streaming to MCP clients
+- MCP supports progress notifications and resource subscriptions for streaming-capable clients
 
 ## Requirements
 
@@ -39,7 +40,7 @@ TranscriberKit/
 
 ```bash
 swift build
-swift test    # 65 tests
+swift test    # 73 tests
 ```
 
 Release build with entitlements (required for microphone access):
@@ -90,7 +91,7 @@ Hello, this is a complete sentence.
 
 ## MCP Server
 
-The MCP server exposes four tools for use with Claude Code or any MCP client.
+The MCP server exposes tools and resources for use with Claude Code or any MCP client.
 
 ### Tools
 
@@ -100,6 +101,22 @@ The MCP server exposes four tools for use with Claude Code or any MCP client.
 | `stop_transcription` | Stop recording, return full transcript + diarization |
 | `transcribe_file` | Transcribe audio file. Params: `path`, `locale`, `enable_diarization` |
 | `get_status` | Current engine state: `idle` / `recording` / `transcribing` / `processing` |
+
+### Resources
+
+| Resource | URI | Description |
+|----------|-----|-------------|
+| Live Transcript | `transcript://live` | Current accumulated transcript text (updated in real-time during recording) |
+
+### Real-time Streaming
+
+The MCP server supports two streaming mechanisms for clients that implement them:
+
+**Progress notifications** -- When a client sends a `progressToken` in `_meta` with `start_transcription`, the server pushes `notifications/progress` messages containing partial transcript text as speech is recognized.
+
+**Resource subscriptions** -- Clients can subscribe to `transcript://live` via `resources/subscribe`. The server sends `notifications/resources/updated` for each new transcript segment. The client reads the resource to get the current accumulated text.
+
+Note: Claude Code does not currently surface MCP progress notifications or resource subscriptions. These features work with MCP Inspector and custom MCP clients.
 
 ### Setup
 
@@ -119,12 +136,12 @@ Add to your `.mcp.json`:
 
 ```
 Claude> start_transcription with locale en-US
-→ "Recording started. Use stop_transcription to get the transcript."
+-> "Recording started. Use stop_transcription to get the transcript."
 
 (speak into microphone)
 
 Claude> stop_transcription
-→ {"text":"Hello world, this is a test recording.","segments":[...],"speakerSegments":[...],"duration":5.2,"locale":"en-US"}
+-> {"text":"Hello world, this is a test recording.","segments":[...],"speakerSegments":[...],"duration":5.2,"locale":"en-US"}
 ```
 
 ## Library Usage
@@ -157,6 +174,13 @@ let fileStream = try await engine.startFile(
     url: URL(fileURLWithPath: "recording.wav"),
     options: options
 )
+
+// Real-time event observation
+await engine.setOnEvent { event in
+    if let text = event.progressMessage {
+        print("Live: \(text)")
+    }
+}
 ```
 
 ## Dependencies

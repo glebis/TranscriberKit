@@ -38,6 +38,15 @@ public enum TranscriptionEvent: Sendable, Codable, Equatable {
         case error(String)
     }
 
+    /// Returns the transcript text for progress reporting, or nil for non-text events.
+    public var progressMessage: String? {
+        switch self {
+        case .volatile(let r): return r.text
+        case .final_(let r): return r.text
+        case .diarization, .ended: return nil
+        }
+    }
+
     // Custom CodingKeys for the enum
     private enum CodingKeys: String, CodingKey {
         case type, payload

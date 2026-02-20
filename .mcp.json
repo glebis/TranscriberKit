@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "transcriber": {
+      "command": "/Users/glebkalinin/ai_projects/TranscriberKit/.build/release/transcriber-mcp"
+    }
+  }
+}

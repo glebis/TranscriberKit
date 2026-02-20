@@ -33,6 +33,9 @@ struct TranscriptionToolHandler {
             maxSpeakers: maxSpeakers
         )
 
+        // Pass progress token to session manager for notifications
+        await sessionManager.setProgressToken(params._meta?.progressToken)
+
         let message = try await sessionManager.startLive(options: options)
         return CallTool.Result(content: [.text(message)])
     }

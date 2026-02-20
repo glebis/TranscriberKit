@@ -1,4 +1,5 @@
 @preconcurrency import AVFoundation
+import CoreMedia
 import Foundation
 import Speech
 
@@ -82,16 +83,19 @@ public actor TranscriptionSession {
                 // Start receiving transcription results
                 let resultsTask = Task {
                     for try await result in transcriber.results {
+                        let text = String(result.text.characters)
                         if result.isFinal {
+                            let (start, end) = Self.extractTimeRange(from: result.text)
                             continuation.yield(.final_(.init(
-                                text: String(result.text.characters),
-                                startTime: 0,
-                                endTime: 0
+                                text: text,
+                                startTime: start,
+                                endTime: end
                             )))
                         } else {
+                            let (start, _) = Self.extractTimeRange(from: result.text)
                             continuation.yield(.volatile(.init(
-                                text: String(result.text.characters),
-                                timestamp: 0
+                                text: text,
+                                timestamp: start
                             )))
                         }
                     }
@@ -120,6 +124,25 @@ public actor TranscriptionSession {
         }
 
         return stream
+    }
+
+    /// Extract overall start/end time from an AttributedString's audioTimeRange runs.
+    @available(macOS 26, *)
+    private static func extractTimeRange(from text: AttributedString) -> (start: TimeInterval, end: TimeInterval) {
+        var earliest: TimeInterval = .infinity
+        var latest: TimeInterval = 0
+
+        for run in text.runs {
+            if let timeRange = run.audioTimeRange {
+                let start = CMTimeGetSeconds(timeRange.start)
+                let end = CMTimeGetSeconds(timeRange.end)
+                if start.isFinite { earliest = min(earliest, start) }
+                if end.isFinite { latest = max(latest, end) }
+            }
+        }
+
+        if earliest == .infinity { earliest = 0 }
+        return (earliest, latest)
     }
 
     /// Stop the session.

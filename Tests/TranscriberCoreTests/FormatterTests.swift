@@ -60,6 +60,29 @@ struct JSONLinesFormatterTests {
     }
 }
 
+@Suite("TranscriptionEvent progressMessage")
+struct ProgressMessageTests {
+    @Test func volatileReturnsText() {
+        let event = TranscriptionEvent.volatile(.init(text: "partial transcript", timestamp: 1.0))
+        #expect(event.progressMessage == "partial transcript")
+    }
+
+    @Test func finalReturnsText() {
+        let event = TranscriptionEvent.final_(.init(text: "complete sentence", startTime: 0, endTime: 2))
+        #expect(event.progressMessage == "complete sentence")
+    }
+
+    @Test func endedReturnsNil() {
+        let event = TranscriptionEvent.ended(.completed)
+        #expect(event.progressMessage == nil)
+    }
+
+    @Test func diarizationReturnsNil() {
+        let event = TranscriptionEvent.diarization([])
+        #expect(event.progressMessage == nil)
+    }
+}
+
 @Suite("TextFormatter")
 struct TextFormatterTests {
     let formatter = TextFormatter()

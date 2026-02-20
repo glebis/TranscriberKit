@@ -22,6 +22,9 @@ public actor TranscriptionEngine {
     private var diarizationProcessor: DiarizationProcessor?
     private var collectedEvents: [TranscriptionEvent] = []
 
+    /// Called for each event as it arrives. Set via `setOnEvent`.
+    private var onEvent: (@Sendable (TranscriptionEvent) async -> Void)?
+
     /// When true, always use MockTranscriptionSession (for unit tests).
     public var forceMock: Bool = false
 
@@ -30,6 +33,11 @@ public actor TranscriptionEngine {
     /// Set forceMock from outside the actor (for tests).
     public func setForceMock(_ value: Bool) {
         forceMock = value
+    }
+
+    /// Set a callback invoked for each transcription event as it arrives.
+    public func setOnEvent(_ handler: (@Sendable (TranscriptionEvent) async -> Void)?) {
+        onEvent = handler
     }
 
     /// Start a live transcription from a mic source.
@@ -199,8 +207,9 @@ public actor TranscriptionEngine {
         return innerStream
     }
 
-    private func collectEvent(_ event: TranscriptionEvent) {
+    private func collectEvent(_ event: TranscriptionEvent) async {
         collectedEvents.append(event)
+        await onEvent?(event)
     }
 
     private func sessionDidEnd() {

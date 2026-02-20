@@ -122,6 +122,77 @@ struct TranscriptionEngineTests {
         }
     }
 
+    @Test func onEventCallbackReceivesAllEvents() async throws {
+        try await withMockEngine { engine in
+            let collector = EventCollector()
+            await engine.setOnEvent { event in
+                await collector.add(event)
+            }
+
+            let source = MockAudioSource(bufferCount: 2)
+            let stream = try await engine.startWithSource(source)
+            for await _ in stream {}
+
+            // MockAudioSource with 2 buffers produces:
+            // volatile(0), final(0), volatile(1), final(1), ended
+            let observed = await collector.events
+            #expect(observed.count == 5)
+
+            // Verify callback got same events as internal collection
+            let collected = await engine.getCollectedEvents()
+            #expect(observed == collected)
+        }
+    }
+
+    @Test func onEventCallbackReceivesEventsInRealTime() async throws {
+        try await withMockEngine { engine in
+            let collector = EventCollector()
+            await engine.setOnEvent { event in
+                await collector.add(event)
+            }
+
+            let source = MockAudioSource(bufferCount: 1)
+            let stream = try await engine.startWithSource(source)
+            for await _ in stream {}
+
+            let count = await collector.events.count
+            #expect(count > 0)
+        }
+    }
+
+    @Test func onEventCallbackCanBeCleared() async throws {
+        try await withMockEngine { engine in
+            let collector = EventCollector()
+            await engine.setOnEvent { event in
+                await collector.add(event)
+            }
+
+            // Clear the callback
+            await engine.setOnEvent(nil)
+
+            let source = MockAudioSource(bufferCount: 1)
+            let stream = try await engine.startWithSource(source)
+            for await _ in stream {}
+
+            let count = await collector.events.count
+            #expect(count == 0)
+        }
+    }
+
+    @Test func buildResultAccumulatesTextFromFinals() async throws {
+        try await withMockEngine { engine in
+            let source = MockAudioSource(bufferCount: 3)
+            let stream = try await engine.startWithSource(source)
+            for await _ in stream {}
+
+            let result = await engine.buildResult()
+            // 3 final segments: "segment 0", "segment 1", "segment 2"
+            #expect(result.text == "segment 0segment 1segment 2")
+            #expect(result.segments.count == 3)
+            #expect(result.duration > 0)
+        }
+    }
+
     @Test func fileTranscriptionChangesState() async throws {
         let format = AVAudioFormat(standardFormatWithSampleRate: 16000, channels: 1)!
         let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 1600)!
@@ -143,5 +214,14 @@ struct TranscriptionEngineTests {
             let state = await engine.getStatus()
             #expect(state == .idle)
         }
+    }
+}
+
+/// Thread-safe event collector for testing async callbacks.
+private actor EventCollector {
+    var events: [TranscriptionEvent] = []
+
+    func add(_ event: TranscriptionEvent) {
+        events.append(event)
     }
 }
